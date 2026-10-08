@@ -104,7 +104,7 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
   <ol class="steps">
     <li><span>打开页面：调 <code>POST /sql-assistant/suggest</code>，把返回的问题做成可点击的推荐。</span></li>
     <li><span>提问：调 <code>POST /sql-assistant/ask/stream</code>，带前端生成的 <code>session_id</code>。同号追问会带上历史；新会话换一个新号即可。</span></li>
-    <li><span>渲染：过程区显示 <code>step.label</code>；答复直接渲染 <code>answer.markdown</code>；<code>answer.follow_ups</code> 做成追问按钮。</span></li>
+    <li><span>渲染：事件与智能问数流式接口同一协议——过程区按节点渲染，<code>conclusion</code> 正文直接渲染，<code>followups</code> 做成追问按钮。</span></li>
   </ol>
 </section>
 
@@ -135,40 +135,52 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
   "session_id": "1",
   "tables": "xianmo_an.xianmo_daily_user_dashboard,xianmo_ods_rt.user_login_log"
 }</pre></div>
-    <h3>事件（按顺序）</h3>
+    <h3>事件</h3>
+    <p class="ep-desc">与智能问数 <code>/ask/stream</code> 同一套面板协议，前端可复用同一套解析与渲染。</p>
+    <p class="ep-desc">每帧 data 都带：<code>ts</code> 轮内秒、<code>cost_time</code> 本帧耗时秒；有明细时带 <code>data</code>。过程节点按 <code>phase</code> 三段式：<code>start</code> 开框（<code>title</code>）→ <code>delta</code> 内容（<code>md</code>，可带 <code>data</code>）→ <code>end</code> 收框（<code>title</code>、<code>ok</code>），按 <code>step</code> 配对。</p>
     <div class="tbl"><table>
-      <thead><tr><th>event</th><th>data</th><th>前端怎么用</th></tr></thead>
+      <thead><tr><th>event</th><th>含义</th><th>前端怎么用</th></tr></thead>
       <tbody>
-        <tr><td><code>session</code></td><td><code>{"session_id"}</code></td><td>即请求里的会话号</td></tr>
-        <tr><td><code>step</code></td><td><code>{"label"}</code></td><td>过程提示，如「读取表结构：xxx」</td></tr>
-        <tr><td><code>answer</code></td><td>见下表</td><td>答复</td></tr>
-        <tr><td><code>error</code></td><td><code>{"message"}</code></td><td>失败原因，直接展示</td></tr>
-        <tr><td><code>done</code></td><td><code>{"elapsed_ms"}</code></td><td>结束</td></tr>
+        <tr><td><code>started</code></td><td>轮次开始</td><td>载荷含 <code>session_id</code>、<code>engine</code>=<code>sql_assistant</code></td></tr>
+        <tr><td><code>tables</code></td><td>搜表 / 读表结构 / 读建表语句</td><td>节点；delta 的 <code>data</code>=表明细 <code>[{full_name, comment, layer, column_count}]</code></td></tr>
+        <tr><td><code>metrics</code> / <code>knowledge</code></td><td>平台指标 / 项目知识、SQL 规范</td><td>节点</td></tr>
+        <tr><td><code>sql</code></td><td>SQL 草稿校验 / 交付前平台校验</td><td>节点；delta 的 <code>md</code> 为 SQL 代码块，end 标题带预计扫描行数</td></tr>
+        <tr><td><code>conclusion</code></td><td>答复</td><td>节点；delta 的 <code>md</code> 即最终答复，直接渲染</td></tr>
+        <tr><td><code>followups</code></td><td>推荐追问</td><td><code>data</code>=问题数组，做成按钮</td></tr>
+        <tr><td><code>duration</code></td><td>总耗时</td><td>可选展示</td></tr>
+        <tr><td><code>end</code></td><td>收尾</td><td>流结束；载荷含 <code>session_id</code>、<code>follow_ups</code>，以及结构化答复 <code>answer</code>（见下表）</td></tr>
+        <tr><td><code>heartbeat</code></td><td>心跳（空闲 10 秒一次）</td><td>载荷 <code>node</code> 当前步骤、<code>busy_s</code>，可忽略</td></tr>
+        <tr><td><code>error</code></td><td>失败</td><td>载荷 <code>error</code> 为原因，直接展示；其后仍有 <code>duration</code>、<code>end</code></td></tr>
       </tbody>
     </table></div>
-    <h3>answer 字段</h3>
+    <h3>end.answer（结构化答复，自己排版时用）</h3>
     <div class="tbl"><table>
       <thead><tr><th>字段</th><th>说明</th></tr></thead>
       <tbody>
-        <tr><td><code>markdown</code></td><td>拼好的完整答复，直接渲染即可</td></tr>
         <tr><td><code>kind</code></td><td><code>sql</code> 给出 SQL · <code>metadata</code> 回答元数据 · <code>clarify</code> 反问用户</td></tr>
-        <tr><td><code>sqls[]</code></td><td>每段 SQL：<code>title</code> <code>purpose</code> <code>sql</code> <code>time_window</code> <code>volume</code> <code>checks</code>（自己排版时用）</td></tr>
-        <tr><td><code>follow_ups[]</code></td><td>推荐追问</td></tr>
-        <tr><td><code>ddl[]</code></td><td>用户要建表语句时附上的原文：<code>table</code> <code>sql</code>（已包含在 markdown 里）</td></tr>
+        <tr><td><code>sqls[]</code></td><td>每段 SQL：<code>title</code> <code>purpose</code> <code>sql</code> <code>time_window</code> <code>volume</code> <code>checks</code></td></tr>
+        <tr><td><code>ddl[]</code></td><td>用户要建表语句时附上的原文：<code>table</code> <code>sql</code></td></tr>
+        <tr><td><code>assumptions[]</code></td><td>口径与假设</td></tr>
       </tbody>
     </table></div>
-    <div class="code"><div class="lbl">返回示例（节选）</div><button class="copy" type="button">复制</button><pre>event: session
-data: {"session_id": "1"}
+    <div class="code"><div class="lbl">返回示例（节选）</div><button class="copy" type="button">复制</button><pre>event: started
+data: {"session_id": "1", "request_channel": "web", "engine": "sql_assistant", "ts": 0.0, "cost_time": 0.0}
 
-event: step
-data: {"stage": "tool", "label": "读取表结构：xianmo_ods_rt.user_login_log"}
+event: tables
+data: {"phase": "start", "step": 1, "title": "读取选定表：xianmo_an.xianmo_daily_user_dashboard", "ts": 2.01, "cost_time": 0.0}
 
-event: answer
-data: {"kind": "sql", "markdown": "…", "sqls": [ … ], "follow_ups": [ … ], …}
+event: tables
+data: {"phase": "delta", "md": "xianmo_an.xianmo_daily_user_dashboard", "data": [{"full_name": "…", "comment": "…", "layer": "", "column_count": 120}], "ts": 3.15, "cost_time": 0.0}
 
-event: done
-data: {"elapsed_ms": 31520}</pre></div>
-    <p class="note">每 15 秒有一行 <code>: ping</code> 心跳，忽略即可。断开连接即取消本轮。</p>
+event: tables
+data: {"phase": "end", "step": 1, "title": "已读取表结构：…", "ok": true, "ts": 3.15, "cost_time": 1.14}
+
+event: conclusion
+data: {"phase": "delta", "md": "…最终答复 markdown…", "ts": 36.34, "cost_time": 0.0}
+
+event: end
+data: {"session_id": "1", "follow_ups": ["…"], "answer": {"kind": "sql", "sqls": [ … ]}, "response_time_ms": 36340, …}</pre></div>
+    <p class="note">断开连接即取消本轮。</p>
   </div>
 </section>
 
@@ -184,7 +196,7 @@ data: {"elapsed_ms": 31520}</pre></div>
 
 <section id="errors">
   <h2>错误</h2>
-  <p>开始推流之前的错误走 HTTP 状态码，响应体 <code>{"error": "…"}</code>；开始之后的走 <code>error</code> 事件。两种提示文字都可直接展示。</p>
+  <p>开始推流之前的错误走 HTTP 状态码，响应体 <code>{"error": "…"}</code>；开始之后的走 <code>error</code> 事件（载荷 <code>error</code>）。两种提示文字都可直接展示。</p>
   <div class="tbl"><table>
     <thead><tr><th>状态码</th><th>含义</th></tr></thead>
     <tbody>

@@ -115,7 +115,7 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
     <tbody>
       <tr><td>身份</td><td><code>account_hash_id</code>，与调问数接口时传的是同一个值。助手只看得到该账号在查询平台上有权限的库表。</td></tr>
       <tr><td>项目</td><td><code>project</code>：查询平台项目名或 project_id，字符串或数字都行，如 <code>137</code> 或 <code>"新仙魔3D"</code>。不传则由助手按问题判断。</td></tr>
-      <tr><td>选定表</td><td><code>tables</code>：「选择库表」选中的表，<code>"库名.表名,库名.表名"</code>（中英文逗号均可）或数组，最多 20 张。助手优先基于这些表回答，不够用时会另找表并说明原因。不选就不传。</td></tr>
+      <tr><td>选定表</td><td><code>tables</code>：「选择库表」选中的表，<code>"库名.表名,库名.表名"</code>（中英文逗号均可）或数组，最多 20 张。助手优先基于这些表回答，不够用时会另找表并说明原因。<b>不选库表</b>：不传，或传 <code>""</code> / <code>null</code> / <code>[]</code>，效果相同，助手按问题自行找表。</td></tr>
       <tr><td>会话</td><td><code>session_id</code>：前端生成，字符串或数字，最长 128 字符。同一账号下同号即同一会话，2 小时未用自动过期。</td></tr>
       <tr><td>鉴权</td><td>与问数接口相同：服务端开启口令时带请求头 <code>X-Api-Token</code>（当前未开启）。</td></tr>
       <tr><td>耗时</td><td>一轮通常 5–60 秒，最长 300 秒。</td></tr>

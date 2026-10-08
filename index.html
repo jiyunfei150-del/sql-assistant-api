@@ -115,6 +115,7 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
     <tbody>
       <tr><td>身份</td><td><code>account_hash_id</code>，与调问数接口时传的是同一个值。助手只看得到该账号在查询平台上有权限的库表。</td></tr>
       <tr><td>项目</td><td><code>project</code>：查询平台项目名或 project_id，字符串或数字都行，如 <code>137</code> 或 <code>"新仙魔3D"</code>。不传则由助手按问题判断。</td></tr>
+      <tr><td>选定表</td><td><code>tables</code>：「选择库表」选中的表，<code>"库名.表名,库名.表名"</code>（中英文逗号均可）或数组，最多 20 张。助手优先基于这些表回答，不够用时会另找表并说明原因。不选就不传。</td></tr>
       <tr><td>会话</td><td><code>session_id</code>：前端生成，字符串或数字，最长 128 字符。同一账号下同号即同一会话，2 小时未用自动过期。</td></tr>
       <tr><td>鉴权</td><td>与问数接口相同：服务端开启口令时带请求头 <code>X-Api-Token</code>（当前未开启）。</td></tr>
       <tr><td>耗时</td><td>一轮通常 5–60 秒，最长 300 秒。</td></tr>
@@ -126,12 +127,13 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
   <h2>提问</h2>
   <div class="ep">
     <div class="ep-head"><span class="m post">POST</span><span class="path">/sql-assistant/ask/stream</span></div>
-    <p class="ep-desc">返回 SSE 事件流。<code>question</code> 必填。</p>
+    <p class="ep-desc">返回 SSE 事件流。<code>question</code> 必填，其余字段见通用约定。</p>
     <div class="code"><div class="lbl">请求</div><button class="copy" type="button">复制</button><pre>{
   "question": "最近一个月每天新增用户的次留",
   "account_hash_id": "&lt;account_hash_id&gt;",
   "project": 137,
-  "session_id": "1"
+  "session_id": "1",
+  "tables": "xianmo_an.xianmo_daily_user_dashboard,xianmo_ods_rt.user_login_log"
 }</pre></div>
     <h3>事件（按顺序）</h3>
     <div class="tbl"><table>
@@ -152,6 +154,7 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
         <tr><td><code>kind</code></td><td><code>sql</code> 给出 SQL · <code>metadata</code> 回答元数据 · <code>clarify</code> 反问用户</td></tr>
         <tr><td><code>sqls[]</code></td><td>每段 SQL：<code>title</code> <code>purpose</code> <code>sql</code> <code>time_window</code> <code>volume</code> <code>checks</code>（自己排版时用）</td></tr>
         <tr><td><code>follow_ups[]</code></td><td>推荐追问</td></tr>
+        <tr><td><code>ddl[]</code></td><td>用户要建表语句时附上的原文：<code>table</code> <code>sql</code>（已包含在 markdown 里）</td></tr>
       </tbody>
     </table></div>
     <div class="code"><div class="lbl">返回示例（节选）</div><button class="copy" type="button">复制</button><pre>event: session
@@ -187,7 +190,7 @@ data: {"elapsed_ms": 31520}</pre></div>
     <tbody>
       <tr><td>400</td><td>没带身份</td></tr>
       <tr><td>401</td><td>口令错误</td></tr>
-      <tr><td>422</td><td>请求体不合法（如缺 <code>question</code>、<code>session_id</code> 超长）</td></tr>
+      <tr><td>422</td><td>请求体不合法（如缺 <code>question</code>、<code>session_id</code> 超长、<code>tables</code> 某项不是 库名.表名）</td></tr>
       <tr><td>502</td><td>推荐问题生成失败</td></tr>
       <tr><td>503</td><td>服务端未配置查询平台</td></tr>
     </tbody>

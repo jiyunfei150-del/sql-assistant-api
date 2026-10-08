@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SQL 智能助手接口手册</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* 布局：桌面左侧目录吸顶 + 右侧正文；手机单列。接口卡片 = 方法徽章 + 路径 + 请求/响应代码块 + 字段表 */
+:root{
+  --bg:#f6f7f8; --panel:#ffffff; --fg:#1d2328; --muted:#5b6670; --line:#dde2e6;
+  --accent:#0f6b73; --accent-soft:#e3f1f2; --code-bg:#f0f2f4; --code-fg:#23303a;
+  --get:#1f7a4d; --post:#2957a4; --put:#a4661b; --warn-bg:#fff6e5; --warn-fg:#7a4b00;
+  --sans:"IBM Plex Sans","PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12171b; --panel:#182026; --fg:#e4e9ec; --muted:#9aa7b0; --line:#2a353d;
+  --accent:#5fc3cb; --accent-soft:#16333a; --code-bg:#0f1418; --code-fg:#d6e0e6;
+  --get:#5bc48b; --post:#7ea6ea; --put:#e0a55a; --warn-bg:#2f2614; --warn-fg:#f0c77a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12171b; --panel:#182026; --fg:#e4e9ec; --muted:#9aa7b0; --line:#2a353d;
+  --accent:#5fc3cb; --accent-soft:#16333a; --code-bg:#0f1418; --code-fg:#d6e0e6;
+  --get:#5bc48b; --post:#7ea6ea; --put:#e0a55a; --warn-bg:#2f2614; --warn-fg:#f0c77a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.7;margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:32px 64px;display:grid;grid-template-columns:220px minmax(0,1fr);gap:40px}
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top,0px) + 24px);align-self:start;font-size:13.5px}
+nav.toc .brand{font-weight:600;color:var(--accent);letter-spacing:.04em;font-size:12px;text-transform:uppercase;margin-bottom:12px}
+nav.toc a{display:block;color:var(--muted);text-decoration:none;padding:5px 10px;border-left:2px solid var(--line)}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--fg);border-left-color:var(--accent);outline:none}
+nav.toc .sub{padding-left:22px;font-family:var(--mono);font-size:12.5px}
+main{min-width:0}
+header.top h1{font-size:30px;line-height:1.25;margin:0 0 8px;text-wrap:balance;font-weight:600}
+header.top p.lead{color:var(--muted);margin:0 0 18px;max-width:66ch}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.chip{font-size:12.5px;border:1px solid var(--line);border-radius:999px;padding:2px 10px;color:var(--muted);background:var(--panel)}
+.chip b{color:var(--fg);font-weight:500}
+.chip a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}.chip a b{color:inherit}
+.status{display:flex;gap:10px;align-items:flex-start;background:var(--warn-bg);color:var(--warn-fg);border-radius:8px;padding:12px 14px;margin:18px 0 8px;font-size:14px}
+h2{font-size:21px;margin:48px 0 12px;padding-top:8px;text-wrap:balance;font-weight:600}
+h3{font-size:16px;margin:26px 0 8px;font-weight:600}
+p,li{max-width:72ch}
+code{font-family:var(--mono);font-size:.9em;background:var(--code-bg);color:var(--code-fg);padding:1px 5px;border-radius:4px}
+.steps{counter-reset:s;list-style:none;padding:0;margin:12px 0;display:grid;gap:10px}
+.steps li{counter-increment:s;display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:start;max-width:none}
+.steps li::before{content:counter(s);width:24px;height:24px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-weight:600;font-size:13px;display:grid;place-items:center;margin-top:2px;font-variant-numeric:tabular-nums}
+.ep{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin:16px 0}
+.ep-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:6px}
+.m{font-family:var(--mono);font-size:12px;font-weight:500;padding:2px 8px;border-radius:5px;color:#fff;letter-spacing:.03em}
+.m.get{background:var(--get)} .m.post{background:var(--post)} .m.put{background:var(--put)}
+:root[data-theme="dark"] .m{color:#0d1216}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .m{color:#0d1216}}
+.path{font-family:var(--mono);font-size:15px;word-break:break-all}
+.ep-desc{color:var(--muted);margin:0 0 6px}
+.code{position:relative;margin:10px 0}
+.code .lbl{font-size:12px;color:var(--muted);margin-bottom:4px;letter-spacing:.03em}
+pre{margin:0;background:var(--code-bg);color:var(--code-fg);border-radius:8px;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.6}
+.copy{position:absolute;top:24px;right:8px;font:12px var(--sans);border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:6px;padding:2px 9px;cursor:pointer}
+.copy:hover,.copy:focus-visible{color:var(--fg);border-color:var(--accent);outline:none}
+.tbl{overflow-x:auto;margin:10px 0}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+th,td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{font-weight:600;color:var(--muted);font-size:12.5px;letter-spacing:.03em}
+td code{white-space:nowrap}
+.note{border-left:3px solid var(--accent);padding:4px 0 4px 12px;margin:12px 0;color:var(--fg)}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0;font-size:14px}
+.flow span{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px}
+.flow i{font-style:normal;color:var(--muted)}
+footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:14px}
+@media (max-width:860px){.wrap{grid-template-columns:minmax(0,1fr);gap:8px}nav.toc{display:none}header.top h1{font-size:25px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<nav class="toc" aria-label="目录">
+  <div class="brand">brain-query · SQL 智能助手</div>
+  <a href="#steps">对接步骤</a>
+  <a href="#common">通用约定</a>
+  <a href="#ask">提问</a>
+  <a class="sub" href="#ask">POST /ask/stream</a>
+  <a href="#suggest">推荐问题</a>
+  <a class="sub" href="#suggest">POST /suggest</a>
+  <a href="#errors">错误</a>
+</nav>
+
+<main>
+<header class="top">
+  <h1>SQL 智能助手接口手册</h1>
+  <p class="lead">只凭查询平台的元数据回答两类问题：表和字段是什么、需求怎么写成可执行的 SQL。不执行查询，不返回数据。</p>
+  <div class="meta">
+    <span class="chip">前缀 <b>/sql-assistant</b></span>
+    <span class="chip">提问 <b>SSE 流式</b></span>
+    <span class="chip">更新 <b>2026-10-08</b></span>
+  </div>
+  <div class="status" role="note"><span aria-hidden="true">●</span><span><b>后端状态：</b>已部署预发，可联调。服务地址（内网，端口 18777）找吉云飞获取。</span></div>
+</header>
+
+<section id="steps">
+  <h2>对接步骤</h2>
+  <ol class="steps">
+    <li><span>打开页面：调 <code>POST /sql-assistant/suggest</code>，把返回的问题做成可点击的推荐。</span></li>
+    <li><span>提问：调 <code>POST /sql-assistant/ask/stream</code>，带前端生成的 <code>session_id</code>。同号追问会带上历史；新会话换一个新号即可。</span></li>
+    <li><span>渲染：过程区显示 <code>step.label</code>；答复直接渲染 <code>answer.markdown</code>；<code>answer.follow_ups</code> 做成追问按钮。</span></li>
+  </ol>
+</section>
+
+<section id="common">
+  <h2>通用约定</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>项</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>身份</td><td><code>account_hash_id</code>，与调问数接口时传的是同一个值。助手只看得到该账号在查询平台上有权限的库表。</td></tr>
+      <tr><td>项目</td><td><code>project</code>：查询平台项目名或 project_id，字符串或数字都行，如 <code>137</code> 或 <code>"新仙魔3D"</code>。不传则由助手按问题判断。</td></tr>
+      <tr><td>会话</td><td><code>session_id</code>：前端生成，字符串或数字，最长 128 字符。同一账号下同号即同一会话，2 小时未用自动过期。</td></tr>
+      <tr><td>鉴权</td><td>与问数接口相同：服务端开启口令时带请求头 <code>X-Api-Token</code>（当前未开启）。</td></tr>
+      <tr><td>耗时</td><td>一轮通常 5–60 秒，最长 300 秒。</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="ask">
+  <h2>提问</h2>
+  <div class="ep">
+    <div class="ep-head"><span class="m post">POST</span><span class="path">/sql-assistant/ask/stream</span></div>
+    <p class="ep-desc">返回 SSE 事件流。<code>question</code> 必填。</p>
+    <div class="code"><div class="lbl">请求</div><button class="copy" type="button">复制</button><pre>{
+  "question": "最近一个月每天新增用户的次留",
+  "account_hash_id": "&lt;account_hash_id&gt;",
+  "project": 137,
+  "session_id": "1"
+}</pre></div>
+    <h3>事件（按顺序）</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>event</th><th>data</th><th>前端怎么用</th></tr></thead>
+      <tbody>
+        <tr><td><code>session</code></td><td><code>{"session_id"}</code></td><td>即请求里的会话号</td></tr>
+        <tr><td><code>step</code></td><td><code>{"label"}</code></td><td>过程提示，如「读取表结构：xxx」</td></tr>
+        <tr><td><code>answer</code></td><td>见下表</td><td>答复</td></tr>
+        <tr><td><code>error</code></td><td><code>{"message"}</code></td><td>失败原因，直接展示</td></tr>
+        <tr><td><code>done</code></td><td><code>{"elapsed_ms"}</code></td><td>结束</td></tr>
+      </tbody>
+    </table></div>
+    <h3>answer 字段</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>字段</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><code>markdown</code></td><td>拼好的完整答复，直接渲染即可</td></tr>
+        <tr><td><code>kind</code></td><td><code>sql</code> 给出 SQL · <code>metadata</code> 回答元数据 · <code>clarify</code> 反问用户</td></tr>
+        <tr><td><code>sqls[]</code></td><td>每段 SQL：<code>title</code> <code>purpose</code> <code>sql</code> <code>time_window</code> <code>volume</code> <code>checks</code>（自己排版时用）</td></tr>
+        <tr><td><code>follow_ups[]</code></td><td>推荐追问</td></tr>
+      </tbody>
+    </table></div>
+    <div class="code"><div class="lbl">返回示例（节选）</div><button class="copy" type="button">复制</button><pre>event: session
+data: {"session_id": "1"}
+
+event: step
+data: {"stage": "tool", "label": "读取表结构：xianmo_ods_rt.user_login_log"}
+
+event: answer
+data: {"kind": "sql", "markdown": "…", "sqls": [ … ], "follow_ups": [ … ], …}
+
+event: done
+data: {"elapsed_ms": 31520}</pre></div>
+    <p class="note">每 15 秒有一行 <code>: ping</code> 心跳，忽略即可。断开连接即取消本轮。</p>
+  </div>
+</section>
+
+<section id="suggest">
+  <h2>推荐问题</h2>
+  <div class="ep">
+    <div class="ep-head"><span class="m post">POST</span><span class="path">/sql-assistant/suggest</span></div>
+    <p class="ep-desc">带 <code>session_id</code> 且该会话上一轮有追问建议时返回追问建议（<code>source=follow_up</code>），否则按账号有权限的真实库表生成开场问题（<code>source=opening</code>）。<code>limit</code> 可选，默认 6。</p>
+    <div class="code"><div class="lbl">请求</div><button class="copy" type="button">复制</button><pre>{"account_hash_id": "&lt;account_hash_id&gt;", "project": 137, "session_id": "1"}</pre></div>
+    <div class="code"><div class="lbl">响应</div><button class="copy" type="button">复制</button><pre>{"source": "opening", "questions": ["…", "…"]}</pre></div>
+  </div>
+</section>
+
+<section id="errors">
+  <h2>错误</h2>
+  <p>开始推流之前的错误走 HTTP 状态码，响应体 <code>{"error": "…"}</code>；开始之后的走 <code>error</code> 事件。两种提示文字都可直接展示。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>状态码</th><th>含义</th></tr></thead>
+    <tbody>
+      <tr><td>400</td><td>没带身份</td></tr>
+      <tr><td>401</td><td>口令错误</td></tr>
+      <tr><td>422</td><td>请求体不合法（如缺 <code>question</code>、<code>session_id</code> 超长）</td></tr>
+      <tr><td>502</td><td>推荐问题生成失败</td></tr>
+      <tr><td>503</td><td>服务端未配置查询平台</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<footer>brain-query · SQL 智能助手接口 · 2026-10-08</footer>
+</main>
+</div>
+
+<script>
+document.querySelectorAll('.code').forEach(function (box) {
+  var btn = box.querySelector('.copy'), pre = box.querySelector('pre');
+  if (!btn || !pre) return;
+  btn.addEventListener('click', function () {
+    var text = pre.innerText, done = function () { btn.textContent = '已复制'; setTimeout(function () { btn.textContent = '复制'; }, 1500); };
+    var fallback = function () { var r = document.createRange(); r.selectNodeContents(pre); var s = getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = '已选中，按 Ctrl+C'; };
+    try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+  });
+});
+</script>
+</body>
+</html>
